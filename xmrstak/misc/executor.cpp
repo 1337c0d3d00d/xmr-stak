@@ -386,7 +386,7 @@ void executor::on_pool_have_job(size_t pool_id, pool_job& oPoolJob)
 	if(iPoolDiff != pool->get_current_diff())
 	{
 		iPoolDiff = pool->get_current_diff();
-		printer::inst()->print_msg(L2, "Difficulty changed. Now: %llu.", int_port(iPoolDiff));
+		printer::inst()->print_msg(L2, "\033[31mDifficulty changed. Now: %llu.\033[0m", int_port(iPoolDiff));
 	}
 
 	if(dat.pool_id != pool_id)
@@ -447,7 +447,7 @@ void executor::on_miner_result(size_t pool_id, job_result& oResult)
 	{
 		uint64_t* targets = (uint64_t*)oResult.bResult;
 		log_result_ok(jpsock::t64_to_diff(targets[3]));
-		printer::inst()->print_msg(L3, "Result accepted by the pool.");
+		printer::inst()->print_msg(L3, "\033[35mResult accepted by the pool.\033[0m");
 	}
 	else
 	{
@@ -656,6 +656,7 @@ void executor::ex_main()
 
 				if(normal && fHighestHps < fHps)
 					fHighestHps = fHps;
+				fLatestHps = fHps;
 			}
 			break;
 

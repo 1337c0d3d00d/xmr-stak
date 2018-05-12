@@ -1,6 +1,6 @@
 project(xmr-stak)
 
-cmake_minimum_required(VERSION 3.4.0)
+cmake_minimum_required(VERSION 3.1.0)
 
 # enforce C++11
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -36,6 +36,10 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "${BUILD_TYPE}")
 
+set(XMR-STAK_CURRENCY "all" CACHE STRING "select miner currency")
+set_property(CACHE XMR-STAK_CURRENCY PROPERTY STRINGS "all;monero;aeon")
+
+
 set(XMR-STAK_COMPILE "native" CACHE STRING "select CPU compute architecture")
 set_property(CACHE XMR-STAK_COMPILE PROPERTY STRINGS "native;generic")
 if(XMR-STAK_COMPILE STREQUAL "native")
@@ -49,8 +53,37 @@ else()
     message(FATAL_ERROR "XMR-STAK_COMPILE is set to an unknown value '${XMR-STAK_COMPILE}'")
 endif()
 
+if(XMR-STAK_CURRENCY STREQUAL "all")
+    message(STATUS "Set miner currency to 'monero' and 'aeon'")
+elseif(XMR-STAK_CURRENCY STREQUAL "aeon")
+    message(STATUS "Set miner currency to 'aeon'")
+    add_definitions("-DCONF_NO_MONERO=1")
+elseif(XMR-STAK_CURRENCY STREQUAL "monero")
+    message(STATUS "Set miner currency to 'monero'")
+    add_definitions("-DCONF_NO_AEON=1")
+endif()
+
 # option to add static libgcc and libstdc++
 option(CMAKE_LINK_STATIC "link as much as possible libraries static" OFF)
+
+# Tweak optimization settings
+# As far as I can tell, there's no way to override the CMake defaults while leaving user
+# changes intact, so we'll just clobber everything and say sorry.
+message(STATUS "Cache compiler flags ignored, please edit CMakeFiles.txt to change the flags.")
+# /MD - Multi-threaded runtime
+# /Ox - Full optimization
+# /Oi - Use intrinsic functions
+# /Oy- - Don't omit frame pointer
+# /GR- - Disable RTTI
+# /GS- - No stack buffer overflow checks
+# /EHsc - C++-only exception handling semantics
+set(optimization_flags "/MD /Ox /Oi /Oy- /DNDEBUG /GR- /GS- /EHsc")
+# /Zi - Output debugging information
+# /Zo - enahnced debug info for optimized builds
+set(CMAKE_C_FLAGS_RELEASE   "${optimization_flags} /Zi" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELEASE "${optimization_flags} /Zi" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${optimization_flags} /Zi /Zo" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${optimization_flags} /Zi /Zo" CACHE STRING "" FORCE)
 
 ################################################################################
 # Find CUDA
@@ -429,14 +462,6 @@ else()
 
 endif()
 
-# add -Wall for debug builds with gcc
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
-    endif()
-endif()
-
 # activate static libgcc and libstdc++ linking
 if(CMAKE_LINK_STATIC)
     set(BUILD_SHARED_LIBRARIES OFF)
@@ -521,16 +546,14 @@ endif()
 file(GLOB SRCFILES_CPP "xmrstak/cli/*.cpp")
 set_source_files_properties(${SRCFILES_CPP} PROPERTIES LANGUAGE CXX)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-    add_executable(xmr-stak ${SRCFILES_CPP} xmrstak/cli/xmr-stak.manifest)
-else()
-    add_executable(xmr-stak ${SRCFILES_CPP})
-endif()
+add_executable(1337-xmr-stak
+    ${SRCFILES_CPP}
+)
 
 set(EXECUTABLE_OUTPUT_PATH "bin" CACHE STRING "Path to place executables relative to ${CMAKE_INSTALL_PREFIX}")
 set(LIBRARY_OUTPUT_PATH "bin" CACHE STRING "Path to place libraries relative to ${CMAKE_INSTALL_PREFIX}")
 
-target_link_libraries(xmr-stak ${LIBS} xmr-stak-c xmr-stak-backend)
+target_link_libraries(1337-xmr-stak ${LIBS} xmr-stak-c xmr-stak-backend)
 
 ################################################################################
 # Install
@@ -539,7 +562,7 @@ target_link_libraries(xmr-stak ${LIBS} xmr-stak-c xmr-stak-backend)
 
 # do not install the binary if the project and install are equal
 if( NOT CMAKE_INSTALL_PREFIX STREQUAL PROJECT_BINARY_DIR )
-    install(TARGETS xmr-stak
+    install(TARGETS 1337-xmr-stak
             RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/${EXECUTABLE_OUTPUT_PATH}")
     if(CUDA_FOUND)
         if(WIN32)

@@ -22,6 +22,7 @@
   */
 
 #include "xmrstak/misc/console.hpp"
+#include "xmrstak/misc/executor.hpp"
 
 #include <time.h>
 #include <stdio.h>
@@ -154,9 +155,17 @@ inline void comp_localtime(const time_t* ctime, tm* stime)
 
 printer::printer()
 {
+	DWORD mode;
+	HANDLE hStdout;
+
 	verbose_level = LINF;
 	logfile = nullptr;
 	b_flush_stdout = false;
+
+	//_ We are tired of black and white TV, color by Techni1337Color
+	hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+	GetConsoleMode(hStdout, &mode);
+	SetConsoleMode(hStdout, mode | (ENABLE_VIRTUAL_TERMINAL_PROCESSING | ENABLE_PROCESSED_OUTPUT | ENABLE_WRAP_AT_EOL_OUTPUT));
 }
 
 bool printer::open_logfile(const char* file)
@@ -176,7 +185,10 @@ void printer::print_msg(verbosity verbose, const char* fmt, ...)
 
 	time_t now = time(nullptr);
 	comp_localtime(&now, &stime);
-	strftime(buf, sizeof(buf), "[%F %T] : ", &stime);
+	strftime(buf, sizeof(buf), "\033[32m[%F %T] \033[0m", &stime);
+
+	//_ DUDE! All I care about are my h4$hs.
+	sprintf(buf, "%s\033[36m[%0.2fH/s] \033[0m", buf, executor::inst()->fLatestHps);
 	bpos = strlen(buf);
 
 	va_list args;
